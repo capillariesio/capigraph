@@ -289,13 +289,23 @@ func (vnh *vizNodeHierarchy) CalculateTotalHorizontalShift() float64 {
 	sum := 0.0
 	for i := range len(vnh.VizNodeMap) {
 		tgtVizNode := &vnh.VizNodeMap[i]
-		if tgtVizNode.Def != nil && len(tgtVizNode.Def.SecIn) > 0 {
-			for _, edge := range tgtVizNode.Def.SecIn {
-				srcVizNode := vnh.VizNodeMap[edge.SrcId]
-				startX := srcVizNode.X + srcVizNode.TotalW/2.0 - srcVizNode.NodeW/2.0
-				endX := tgtVizNode.X + tgtVizNode.TotalW/2.0 - tgtVizNode.NodeW/2.0
-				sum += math.Abs(endX - startX)
+		if tgtVizNode.Def != nil {
+			// Count secondary in
+			if len(tgtVizNode.Def.SecIn) > 0 {
+				for _, edge := range tgtVizNode.Def.SecIn {
+					srcVizNode := vnh.VizNodeMap[edge.SrcId]
+					startX := srcVizNode.X + srcVizNode.TotalW/2.0
+					endX := tgtVizNode.X + tgtVizNode.TotalW/2.0
+					sum += math.Abs(endX - startX)
+				}
 			}
+			// Count primary in
+			// if tgtVizNode.Def.PriIn.SrcId != 0 {
+			// 	srcVizNode := vnh.VizNodeMap[tgtVizNode.Def.PriIn.SrcId]
+			// 	startX := srcVizNode.X + srcVizNode.TotalW/2.0
+			// 	endX := tgtVizNode.X + tgtVizNode.TotalW/2.0
+			// 	sum += math.Abs(endX - startX)
+			// }
 		}
 	}
 	return sum
@@ -550,13 +560,13 @@ func (vnh *vizNodeHierarchy) removeDuplicateSecEdgeLabels() {
 }
 
 // This is the backbone of the library: calculate node positions
-func getBestHierarchy(ctx context.Context, nodeDefs []NodeDef, nodeFo FontOptions, edgeFo FontOptions, optimizationMode OptimizationMode) ([]vizNode, int64, float64, float64, error) {
+func getBestHierarchy(ctx context.Context, nodeDefs []NodeDef, nodeFo FontOptions, edgeFo FontOptions, optimizationMode OptimizationMode) ([]vizNode, LayerMx, int64, float64, float64, error) {
 	priParentMap := buildPriParentMap(nodeDefs)
 	layerMap := buildLayerMap(nodeDefs)
 	rootNodes := buildRootNodeList(priParentMap)
 	mx, err := NewLayerMx(nodeDefs, layerMap, rootNodes)
 	if err != nil {
-		return nil, int64(0), 0.0, 0.0, err
+		return nil, nil, int64(0), 0.0, 0.0, err
 	}
 
 	vnh := newVizNodeHierarchy(nodeDefs, nodeFo, edgeFo)
@@ -572,7 +582,7 @@ func getBestHierarchy(ctx context.Context, nodeDefs []NodeDef, nodeFo FontOption
 		tStart := time.Now()
 		mxi, err := NewLayerMxPermIterator(nodeDefs, mx)
 		if err != nil {
-			return nil, int64(0), 0.0, 0.0, err
+			return nil, nil, int64(0), 0.0, 0.0, err
 		}
 
 		mxi.MxIterator(ctx, func(_ int, mxPerm LayerMx) {
@@ -597,12 +607,12 @@ func getBestHierarchy(ctx context.Context, nodeDefs []NodeDef, nodeFo FontOption
 		})
 		deadline, isDeadline := ctx.Deadline()
 		if isDeadline && time.Now().After(deadline) {
-			return nil, int64(0), 0.0, 0.0, errors.New("timeout exceeded")
+			return nil, nil, int64(0), 0.0, 0.0, errors.New("timeout exceeded")
 		}
 		tElapsed = time.Since(tStart).Seconds()
 
 		if bestMx == nil {
-			return nil, int64(mxPermCnt), tElapsed, 0.0, errors.New("no best")
+			return nil, nil, int64(mxPermCnt), tElapsed, 0.0, errors.New("no best")
 		}
 	} else {
 		bestMx = mx
@@ -625,5 +635,5 @@ func getBestHierarchy(ctx context.Context, nodeDefs []NodeDef, nodeFo FontOption
 	vnh.populateEdgeLabelCoords()
 	vnh.removeDuplicateSecEdgeLabels()
 
-	return vnh.VizNodeMap, int64(mxPermCnt), tElapsed, bestDistSec, nil
+	return vnh.VizNodeMap, bestMx, int64(mxPermCnt), tElapsed, bestDistSec, nil
 }
