@@ -139,7 +139,11 @@ func (vnh *vizNodeHierarchy) insertRoot(rootVizNode *vizNode, perm []int16, idx 
 
 	// No enclose, resort to adding it to the top ubernode
 	topItem := &(vnh.VizNodeMap[0])
-	topItem.PriChildrenAndEnclosedRoots = append(topItem.PriChildrenAndEnclosedRoots, rootVizNode)
+	if idx > len(topItem.PriChildrenAndEnclosedRoots) {
+		topItem.PriChildrenAndEnclosedRoots = append(topItem.PriChildrenAndEnclosedRoots, rootVizNode)
+	} else {
+		topItem.PriChildrenAndEnclosedRoots = slices.Insert(topItem.PriChildrenAndEnclosedRoots, idx, rootVizNode)
+	}
 }
 
 func (vnh *vizNodeHierarchy) buildNewRootSubtreeHierarchy(mx LayerMx) {
@@ -285,8 +289,9 @@ func (vnh *vizNodeHierarchy) populateNodesXCoords() {
 	populateNodeXCoordRecursive(&vnh.VizNodeMap[0])
 }
 
-func (vnh *vizNodeHierarchy) CalculateTotalHorizontalShift() float64 {
-	sum := 0.0
+func (vnh *vizNodeHierarchy) CalculateTotalHorizontalShift() (float64, float64) {
+	allSum := 0.0
+	secSum := 0.0
 	for i := range len(vnh.VizNodeMap) {
 		tgtVizNode := &vnh.VizNodeMap[i]
 		if tgtVizNode.Def != nil {
@@ -296,19 +301,22 @@ func (vnh *vizNodeHierarchy) CalculateTotalHorizontalShift() float64 {
 					srcVizNode := vnh.VizNodeMap[edge.SrcId]
 					startX := srcVizNode.X + srcVizNode.TotalW/2.0
 					endX := tgtVizNode.X + tgtVizNode.TotalW/2.0
-					sum += math.Abs(endX - startX)
+					shift := math.Abs(endX - startX)
+					allSum += shift
+					secSum += shift
 				}
 			}
 			// Count primary in
-			// if tgtVizNode.Def.PriIn.SrcId != 0 {
-			// 	srcVizNode := vnh.VizNodeMap[tgtVizNode.Def.PriIn.SrcId]
-			// 	startX := srcVizNode.X + srcVizNode.TotalW/2.0
-			// 	endX := tgtVizNode.X + tgtVizNode.TotalW/2.0
-			// 	sum += math.Abs(endX - startX)
-			// }
+			if tgtVizNode.Def.PriIn.SrcId != 0 {
+				srcVizNode := vnh.VizNodeMap[tgtVizNode.Def.PriIn.SrcId]
+				startX := srcVizNode.X + srcVizNode.TotalW/2.0
+				endX := tgtVizNode.X + tgtVizNode.TotalW/2.0
+				shift := math.Abs(endX - startX)
+				allSum += shift
+			}
 		}
 	}
-	return sum
+	return allSum, secSum
 }
 
 // Merely copies pre-calculated edge label dimensions to the hierarchy vizitems
@@ -575,7 +583,8 @@ func getBestHierarchy(ctx context.Context, nodeDefs []NodeDef, nodeFo FontOption
 
 	var bestMx LayerMx
 	mxPermCnt := 0
-	bestDistSec := math.MaxFloat64
+	bestAllDist := math.MaxFloat64
+	bestSecDist := math.MaxFloat64
 	var tElapsed float64
 	if optimizationMode == Optimize {
 		bestSignature := "z"
@@ -593,15 +602,16 @@ func getBestHierarchy(ctx context.Context, nodeDefs []NodeDef, nodeFo FontOption
 			vnh.populateNodeTotalWidth()
 			vnh.populateNodesXCoords()
 
-			distSec := vnh.CalculateTotalHorizontalShift()
-			if distSec < bestDistSec {
-				// This: 1. Adds determinism 2. helps user choose ids that go first (to some extent)
-				signature := mxPerm.signature()
-				if distSec < bestDistSec-0.1 || signature < bestSignature {
-					bestDistSec = distSec
-					bestMx = mxPerm.clone()
-					bestSignature = signature
-				}
+			allDist, secDist := vnh.CalculateTotalHorizontalShift()
+			// This: 1. Adds determinism 2. helps user choose ids that go first (to some extent)
+			signature := mxPerm.signature()
+			if allDist < bestAllDist ||
+				allDist == bestAllDist && secDist < bestSecDist ||
+				allDist == bestAllDist && secDist == bestSecDist && signature < bestSignature {
+				bestAllDist = allDist
+				bestSecDist = secDist
+				bestSignature = signature
+				bestMx = mxPerm.clone()
 			}
 			mxPermCnt++
 		})
@@ -616,7 +626,7 @@ func getBestHierarchy(ctx context.Context, nodeDefs []NodeDef, nodeFo FontOption
 		}
 	} else {
 		bestMx = mx
-		bestDistSec = 0.0
+		bestAllDist = 0.0
 	}
 
 	// Hierarchy
@@ -635,5 +645,5 @@ func getBestHierarchy(ctx context.Context, nodeDefs []NodeDef, nodeFo FontOption
 	vnh.populateEdgeLabelCoords()
 	vnh.removeDuplicateSecEdgeLabels()
 
-	return vnh.VizNodeMap, bestMx, int64(mxPermCnt), tElapsed, bestDistSec, nil
+	return vnh.VizNodeMap, bestMx, int64(mxPermCnt), tElapsed, bestAllDist, nil
 }

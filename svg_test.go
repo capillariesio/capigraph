@@ -3,8 +3,6 @@ package capigraph
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -12,19 +10,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getPermsFromSvg(svg string) int64 {
-	re := regexp.MustCompile(`Perms (\d+), elapsed [0-9\.s]+, dist ([\d\.]+)`)
-	match := re.FindStringSubmatch(svg)
-	permutations, _ := strconv.Atoi(match[1])
-	return int64(permutations)
-}
+// func getPermsFromSvg(svg string) int64 {
+// 	re := regexp.MustCompile(`Perms (\d+), elapsed [0-9\.s]+, dist ([\d\.]+)`)
+// 	match := re.FindStringSubmatch(svg)
+// 	permutations, _ := strconv.Atoi(match[1])
+// 	return int64(permutations)
+// }
 
-func getDistFromSvg(svg string) float64 {
-	re := regexp.MustCompile(`Perms (\d+), elapsed [0-9\.s]+, dist ([\d\.]+)`)
-	match := re.FindStringSubmatch(svg)
-	distance, _ := strconv.ParseFloat(match[2], 64)
-	return distance
-}
+// func getDistFromSvg(svg string) float64 {
+// 	re := regexp.MustCompile(`Perms (\d+), elapsed [0-9\.s]+, dist ([\d\.]+)`)
+// 	match := re.FindStringSubmatch(svg)
+// 	distance, _ := strconv.ParseFloat(match[2], 64)
+// 	return distance
+// }
 
 // Common MxPermutator and SVG tests
 
@@ -55,7 +53,7 @@ func TestOneEnclosingOneLevelSvg(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "0:[1], 1:[2 6 3], 2:[4 5]", bestMx.String())
 	assert.Equal(t, int64(6), totalPermutations)
-	assert.Equal(t, 144.0, bestDist)
+	assert.Equal(t, 288.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -66,7 +64,7 @@ func TestOneEnclosedTwoLevelsSvg(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "0:[1], 1:[2 5], 2:[3 8 6], 3:[4 7]", bestMx.String())
 	assert.Equal(t, int64(6), totalPermutations)
-	assert.Equal(t, 144.0, bestDist)
+	assert.Equal(t, 288.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -77,7 +75,7 @@ func TestNoIntervalsSvg(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "0:[1], 1:[2 4], 2:[3 5]", bestMx.String())
 	assert.Equal(t, int64(2), totalPermutations)
-	assert.Equal(t, 0.0, bestDist)
+	assert.Equal(t, 72.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -95,12 +93,12 @@ func TestFlat10Svg(t *testing.T) {
 }
 
 func TestTwoEnclosingTwoLevelsNodeSizeMattersSvg(t *testing.T) {
-	// Only one of 8, 9 is enclosed
+	// None of of 8, 9 is enclosed
 	vizNodeMap, bestMx, totalPermutations, elapsed, bestDist, err := getBestHierarchy(context.TODO(), testNodeDefsTwoEnclosedNodeSizeMatters, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), Optimize)
 	assert.Nil(t, err)
-	assert.Equal(t, "0:[1], 1:[2 3], 2:[4 9 5 8], 3:[6 7]", bestMx.String())
+	assert.Equal(t, "0:[1], 1:[2 3], 2:[8 4 5 9], 3:[6 7]", bestMx.String())
 	assert.Equal(t, int64(24), totalPermutations)
-	assert.Equal(t, 432.0, bestDist)
+	assert.Equal(t, 504.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -112,7 +110,7 @@ func TestTwoEnclosingTwoLevelsNodeSizeMattersSvg(t *testing.T) {
 	vizNodeMap, bestMx, totalPermutations, elapsed, bestDist, err = getBestHierarchy(context.TODO(), testNodeDefsTwoEnclosedNodeSizeMatters, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), Optimize)
 	assert.Nil(t, err)
 	assert.Equal(t, "0:[1], 1:[2 3], 2:[4 8 9 5], 3:[6 7]", bestMx.String())
-	assert.Equal(t, 576.0, bestDist)
+	assert.Equal(t, 864.0, bestDist)
 
 	svg = drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -132,9 +130,9 @@ func TestOneSecondarySvg(t *testing.T) {
 func TestDiamonSvg(t *testing.T) {
 	vizNodeMap, bestMx, totalPermutations, elapsed, bestDist, err := getBestHierarchy(context.TODO(), testNodeDefsDiamond, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), Optimize)
 	assert.Nil(t, err)
-	assert.Equal(t, "0:[1], 1:[2 6 3 4], 2:[5]", bestMx.String())
+	assert.Equal(t, "0:[1], 1:[2 4 3 6], 2:[5]", bestMx.String())
 	assert.Equal(t, int64(24), totalPermutations)
-	assert.Equal(t, 144.0, bestDist)
+	assert.Equal(t, 288.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -200,7 +198,7 @@ func TestTwoLevelsFromOneParentSameRootSvg(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "0:[1], 1:[2 10005], 2:[3 5], 3:[4 6], 4:[7]", bestMx.String())
 	assert.Equal(t, int64(2), totalPermutations)
-	assert.Equal(t, 72.0, bestDist)
+	assert.Equal(t, 144.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -211,7 +209,7 @@ func TestTwoLevelsFromOneParentSameRootTwoFakesSvg(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "0:[1], 1:[2 10006], 2:[3 10006], 3:[4 6], 4:[5 7], 5:[8]", bestMx.String())
 	assert.Equal(t, int64(2), totalPermutations)
-	assert.Equal(t, 72.0, bestDist)
+	assert.Equal(t, 144.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -220,25 +218,25 @@ func TestTwoLevelsFromOneParentSameRootTwoFakesSvg(t *testing.T) {
 func TestDuplicateSecLabelsSvg(t *testing.T) {
 	vizNodeMap, bestMx, totalPermutations, elapsed, bestDist, err := getBestHierarchy(context.TODO(), testNodeDefsDuplicateSecLabels, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), Optimize)
 	assert.Nil(t, err)
-	assert.Equal(t, "0:[6 4 1 2 3 5], 1:[11 9 7 8 10]", bestMx.String())
+	assert.Equal(t, "0:[5 2 1 3 4 6], 1:[10 7 8 9 11]", bestMx.String())
 	// Zero-width sec labels to avoid overlapping
-	assert.Equal(t, 0.0, vizNodeMap[8].IncomingVizEdges[1].W)
+	assert.Equal(t, 0.0, vizNodeMap[9].IncomingVizEdges[1].W)
 	// Displayed sec labels
 	assert.Equal(t, 37.08, vizNodeMap[7].IncomingVizEdges[1].W)
-	assert.Equal(t, 37.08, vizNodeMap[9].IncomingVizEdges[1].W)
+	assert.Equal(t, 37.08, vizNodeMap[8].IncomingVizEdges[1].W)
 	assert.Equal(t, 37.08, vizNodeMap[10].IncomingVizEdges[1].W)
 	assert.Equal(t, 37.08, vizNodeMap[11].IncomingVizEdges[1].W)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
-	assert.Equal(t, int64(720), getPermsFromSvg(svg))
-	assert.Equal(t, 660.0, getDistFromSvg(svg))
+	assert.Equal(t, int64(720), totalPermutations)
+	assert.Equal(t, 660.0, bestDist)
 	fmt.Printf("%s\n", svg)
 }
 
 func TestLayerLongRootsSvg(t *testing.T) {
 	vizNodeMap, bestMx, totalPermutations, elapsed, bestDist, err := getBestHierarchy(context.TODO(), testNodeDefsLayerLongRoots, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), Optimize)
 	assert.Nil(t, err)
-	assert.Equal(t, "0:[5], 1:[6], 2:[7 1], 3:[8 2 9], 4:[3 10], 5:[4 11], 6:[12]", bestMx.String())
+	assert.Equal(t, "0:[5], 1:[6], 2:[1 7], 3:[9 2 8], 4:[10 3], 5:[11 4], 6:[12]", bestMx.String())
 	assert.Equal(t, int64(6), totalPermutations)
 	assert.Equal(t, 222.0, bestDist)
 
@@ -251,7 +249,7 @@ func TestPriAndSecInfinitePulldownSvg(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "0:[1], 1:[2], 2:[3 6], 3:[4 5 7 8]", bestMx.String())
 	assert.Equal(t, int64(4), totalPermutations)
-	assert.Equal(t, 144.0, bestDist)
+	assert.Equal(t, 432.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -375,7 +373,7 @@ func TestEnclosingOneLevelWideNodes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "0:[1], 1:[2 6 3], 2:[4 5]", bestMx.String())
 	assert.Equal(t, int64(6), totalPermutations)
-	assert.Equal(t, 768.0, bestDist)
+	assert.Equal(t, 1536.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -404,7 +402,7 @@ func TestHalfComplexWithEnclosed(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "0:[9 1 12], 1:[10 2 13], 2:[10011 3 10004 14], 3:[11 4], 4:[5 15 6], 5:[7 8]", bestMx.String())
 	assert.Equal(t, int64(48), totalPermutations)
-	assert.Equal(t, 3072.0, bestDist)
+	assert.Equal(t, 4608.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -1018,9 +1016,9 @@ func TestCapillariesIcons(t *testing.T) {
 	// }
 	vizNodeMap, bestMx, totalPermutations, elapsed, bestDist, err := getBestHierarchy(context.TODO(), nodeDefs, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), Optimize)
 	assert.Nil(t, err)
-	assert.Equal(t, "0:[1 13 25 37], 1:[2 14 26 38], 2:[3 10004 6 16 15 18 28 27 30 40 39 42], 3:[5 4 7 21 17 19 33 29 31 45 41 43], 4:[8 9 10 24 20 22 36 32 34 48 44 46], 5:[11 12 23 35 47]", bestMx.String())
+	assert.Equal(t, "0:[1 13 25 37], 1:[2 14 26 38], 2:[3 6 10004 16 15 18 28 27 30 40 39 42], 3:[5 7 4 21 17 19 33 29 31 45 41 43], 4:[8 10 9 24 20 22 36 32 34 48 44 46], 5:[11 12 23 35 47]", bestMx.String())
 	assert.Equal(t, int64(31104), totalPermutations)
-	assert.Equal(t, 6858.0, bestDist)
+	assert.Equal(t, 12926.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), CapillariesIcons100x100, "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
@@ -1090,9 +1088,9 @@ func TestReadmeMonochromeDiamond(t *testing.T) {
 	}
 	vizNodeMap, bestMx, totalPermutations, elapsed, bestDist, err := getBestHierarchy(context.TODO(), testNodeDefsDiamond, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), Optimize)
 	assert.Nil(t, err)
-	assert.Equal(t, "0:[1], 1:[2 6 3 4], 2:[5]", bestMx.String())
+	assert.Equal(t, "0:[1], 1:[2 4 3 6], 2:[5]", bestMx.String())
 	assert.Equal(t, int64(24), totalPermutations)
-	assert.Equal(t, 144.0, bestDist)
+	assert.Equal(t, 288.0, bestDist)
 
 	svg := drawVizNodes(vizNodeMap, DefaultNodeFontOptions(), DefaultEdgeLabelFontOptions(), DefaultEdgeOptions(), "", "", DefaultPalette(), totalPermutations, elapsed, bestDist)
 	fmt.Printf("%s\n", svg)
